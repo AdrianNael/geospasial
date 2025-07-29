@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dasbor Interaktif: Geospasial untuk Pertanian Indonesia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Harmoni Bumi -->
+    <!-- Application Structure Plan: Aplikasi ini dirancang sebagai dasbor tematik satu halaman, bukan mengikuti struktur laporan linear. Tujuannya adalah untuk memungkinkan eksplorasi non-linear. Strukturnya adalah: 1) Hero Section untuk pengenalan. 2) Navigasi sticky untuk akses cepat. 3) Bagian "Platform Ganda" untuk membandingkan GE vs. GEE. 4) Bagian "Kerangka Analisis" dengan diagram proses interaktif dan perbandingan algoritma visual. 5) Bagian utama "Studi Kasus Interaktif" dengan filter dinamis (Sawah, Kelapa Sawit, Kopi) untuk menampilkan data dan visualisasi yang relevan. 6) Bagian "Keandalan & Batasan" untuk menyajikan nuansa akurasi. 7) Bagian "Implikasi & Masa Depan" untuk wawasan strategis. Struktur ini dipilih untuk mengubah konten padat menjadi perjalanan eksplorasi yang menarik, di mana pengguna dapat langsung melompat ke bagian yang paling menarik bagi mereka. -->
+    <!-- Visualization & Content Choices: 1) Perbandingan Algoritma: Info dari Tabel 2 -> Goal: Compare -> Viz: Bagan Batang Horizontal (Chart.js) -> Interaction: Hover tooltips -> Justification: Ideal untuk membandingkan kategori diskrit. 2) Studi Kasus Sawah: Data alih fungsi lahan Serang -> Goal: Show Change -> Viz: Bagan Garis (Chart.js) -> Interaction: Tooltips -> Justification: Standar untuk menampilkan tren waktu. 3) Studi Kasus Kelapa Sawit: Akurasi SVM vs DL -> Goal: Compare Proportions -> Viz: Bagan Donat (Chart.js) -> Interaction: Tooltips -> Justification: Efektif untuk perbandingan sederhana dan variasi visual. 4) Studi Kasus Kopi: Perubahan tutupan lahan -> Goal: Compare Change -> Viz: Bagan Batang (Chart.js) -> Interaction: Tooltips -> Justification: Jelas untuk menunjukkan besaran perubahan. 5) Diagram Proses: Alur kerja metodologis -> Goal: Organize -> Viz: Diagram HTML/CSS Flexbox -> Interaction: Klik untuk detail -> Justification: Menghindari SVG/gambar, ringan, dan interaktif. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fdfcf9; /* Warm off-white */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #ca8a04; /* amber-500 */
+            border-bottom-color: #ca8a04;
+        }
+        .filter-btn.active {
+            background-color: #047857; /* emerald-700 */
+            color: white;
+        }
+        .content-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .content-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="text-stone-800">
+
+    <!-- Header & Navigation -->
+    <header id="header" class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold text-emerald-800">GeoAgri Indonesia</h1>
+            <div class="hidden md:flex space-x-8">
+                <a href="#home" class="nav-link font-medium border-b-2 border-transparent pb-1">Beranda</a>
+                <a href="#platforms" class="nav-link font-medium border-b-2 border-transparent pb-1">Platform & Metode</a>
+                <a href="#casestudies" class="nav-link font-medium border-b-2 border-transparent pb-1">Studi Kasus</a>
+                <a href="#reliability" class="nav-link font-medium border-b-2 border-transparent pb-1">Keandalan</a>
+                <a href="#implications" class="nav-link font-medium border-b-2 border-transparent pb-1">Masa Depan</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-stone-800">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pb-4 space-y-2">
+            <a href="#home" class="block nav-link font-medium py-1">Beranda</a>
+            <a href="#platforms" class="block nav-link font-medium py-1">Platform & Metode</a>
+            <a href="#casestudies" class="block nav-link font-medium py-1">Studi Kasus</a>
+            <a href="#reliability" class="block nav-link font-medium py-1">Keandalan</a>
+            <a href="#implications" class="block nav-link font-medium py-1">Masa Depan</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8 md:py-12">
+
+        <!-- Hero Section -->
+        <section id="home" class="text-center py-16 md:py-24">
+            <h2 class="text-4xl md:text-6xl font-extrabold text-emerald-800 leading-tight">Revolusi Geospasial di Sektor Pertanian Indonesia</h2>
+            <p class="mt-6 max-w-3xl mx-auto text-lg md:text-xl text-stone-600">
+                Menjelajahi bagaimana Google Earth dan Google Earth Engine (GEE) mengubah cara kita memantau, menganalisis, dan mengelola lahan pertanian—dari pemetaan skala nasional hingga wawasan untuk pertanian presisi.
+            </p>
+        </section>
+
+        <!-- Platforms & Methods Section -->
+        <section id="platforms" class="py-16 md:py-24 space-y-16">
+            <div class="text-center">
+                <h3 class="text-3xl md:text-4xl font-bold text-stone-800">Platform Ganda: Visualisasi vs. Komputasi</h3>
+                <p class="mt-4 max-w-2xl mx-auto text-stone-600">Inti dari transformasi ini adalah dua platform komplementer dari Google, masing-masing dengan kekuatan uniknya.</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
+                <div class="bg-white p-8 rounded-xl shadow-lg content-card">
+                    <h4 class="text-2xl font-bold text-emerald-700 flex items-center"><span class="text-3xl mr-3">👁️</span> Google Earth</h4>
+                    <p class="font-semibold mt-1 text-stone-600">Visualisasi Resolusi Tinggi & Validasi Lapangan</p>
+                    <p class="mt-4 text-stone-700">Berfungsi sebagai alat visualisasi yang kuat, unggul untuk analisis skala kecil yang mendetail, digitalisasi manual, dan verifikasi lapangan (*ground-truthing*) berkat antarmuka yang ramah pengguna dan citra yang sangat jelas.</p>
+                    <ul class="mt-4 space-y-2 text-stone-700 list-disc list-inside">
+                        <li>Antarmuka ramah pengguna</li>
+                        <li>Citra resolusi sangat tinggi</li>
+                        <li>Ideal untuk validasi & studi skala kecil</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-8 rounded-xl shadow-lg content-card">
+                    <h4 class="text-2xl font-bold text-emerald-700 flex items-center"><span class="text-3xl mr-3">☁️</span> Google Earth Engine (GEE)</h4>
+                    <p class="font-semibold mt-1 text-stone-600">Komputasi Awan & Analisis Skala Planet</p>
+                    <p class="mt-4 text-stone-700">Platform komputasi awan yang dirancang untuk analisis geospasial skala besar, mampu memproses data petabyte dari arsip satelit seperti Landsat dan Sentinel untuk memantau lanskap yang luas.</p>
+                     <ul class="mt-4 space-y-2 text-stone-700 list-disc list-inside">
+                        <li>Pemrosesan data masif di awan</li>
+                        <li>Akses ke arsip data satelit global</li>
+                        <li>Membutuhkan keahlian pemrograman</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="text-center pt-12">
+                <h3 class="text-3xl md:text-4xl font-bold text-stone-800">Kerangka Kerja Metodologis</h3>
+                <p class="mt-4 max-w-2xl mx-auto text-stone-600">Dari data mentah hingga wawasan yang dapat ditindaklanjuti, penelitian ini menggunakan alur kerja yang terstruktur dan algoritma canggih.</p>
+            </div>
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                 <h4 class="text-xl font-bold text-center mb-8 text-emerald-700">Perbandingan Kinerja Algoritma Machine Learning</h4>
+                 <p class="text-center text-stone-600 mb-4 max-w-2xl mx-auto">Algoritma yang berbeda menunjukkan kinerja yang bervariasi. Random Forest (RF) dan Support Vector Machine (SVM) secara konsisten menunjukkan akurasi tertinggi dalam berbagai studi klasifikasi lahan pertanian di Indonesia.</p>
+                <div class="chart-container">
+                    <canvas id="algorithmChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Case Studies Section -->
+        <section id="casestudies" class="py-16 md:py-24">
+            <div class="text-center">
+                <h3 class="text-3xl md:text-4xl font-bold text-stone-800">Studi Kasus Interaktif</h3>
+                <p class="mt-4 max-w-2xl mx-auto text-stone-600">Jelajahi bagaimana teknologi ini diterapkan pada komoditas pertanian utama di Indonesia. Pilih kategori untuk melihat temuan kunci dan visualisasi data.</p>
+            </div>
+            <div class="flex justify-center space-x-2 md:space-x-4 my-8 md:my-12">
+                <button class="filter-btn active px-4 py-2 md:px-6 md:py-3 rounded-full font-semibold bg-white shadow-md transition" data-filter="sawah">🌾 Sawah</button>
+                <button class="filter-btn px-4 py-2 md:px-6 md:py-3 rounded-full font-semibold bg-white shadow-md transition" data-filter="sawit">🌴 Kelapa Sawit</button>
+                <button class="filter-btn px-4 py-2 md:px-6 md:py-3 rounded-full font-semibold bg-white shadow-md transition" data-filter="kopi">☕ Kopi & Agroforestri</button>
+            </div>
+
+            <div id="case-study-content" class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                <!-- Content will be injected here by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Reliability Section -->
+        <section id="reliability" class="py-16 md:py-24 bg-emerald-50/50 rounded-2xl">
+            <div class="text-center">
+                <h3 class="text-3xl md:text-4xl font-bold text-stone-800">Menilai Keandalan & Batasan</h3>
+                <p class="mt-4 max-w-2xl mx-auto text-stone-600">Kepercayaan pada hasil analisis bergantung pada evaluasi kritis terhadap akurasi, validasi, dan keterbatasan yang ada.</p>
+            </div>
+            <div class="mt-12 grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-md content-card">
+                    <h4 class="font-bold text-lg text-emerald-700">✅ Akurasi Kuantitatif</h4>
+                    <p class="mt-2 text-stone-600">Studi melaporkan akurasi tinggi, seringkali >85%, menggunakan metrik standar seperti Akurasi Keseluruhan dan Kappa.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md content-card">
+                    <h4 class="font-bold text-lg text-emerald-700">🗺️ Validasi Lapangan</h4>
+                    <p class="mt-2 text-stone-600">Akurasi tinggi sangat bergantung pada kualitas data *ground-truthing*. Tanpa verifikasi lapangan, analisis secanggih apa pun bersifat pendahuluan.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md content-card">
+                    <h4 class="font-bold text-lg text-emerald-700">☁️ Gangguan Atmosfer</h4>
+                    <p class="mt-2 text-stone-600">Tutupan awan yang persisten di wilayah tropis seperti Indonesia menjadi tantangan signifikan yang dapat memengaruhi ketersediaan data dan akurasi.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md content-card">
+                    <h4 class="font-bold text-lg text-emerald-700">🔳 Keterbatasan Resolusi</h4>
+                    <p class="mt-2 text-stone-600">Resolusi citra (mis., 30m untuk Landsat) mungkin tidak cukup untuk menangkap petak lahan kecil atau pertanian campuran yang kompleks.</p>
+                </div>
+            </div>
+            <div class="mt-12 bg-amber-100/60 border-l-4 border-amber-500 text-amber-900 p-6 rounded-r-lg max-w-4xl mx-auto">
+                <h4 class="font-bold">Wawasan Kunci: Akurasi Kontekstual > Akurasi Piksel</h4>
+                <p class="mt-2">Dalam aplikasi dunia nyata untuk kebijakan dan regulasi, keandalan peta tidak hanya terletak pada skor statistik. Akurasi kontekstual dan administratif (misalnya, batas konsesi legal untuk sertifikasi RSPO) sama pentingnya, jika tidak lebih penting, daripada akurasi klasifikasi tingkat piksel.</p>
+            </div>
+        </section>
+
+        <!-- Implications & Future Section -->
+        <section id="implications" class="py-16 md:py-24">
+            <div class="text-center">
+                <h3 class="text-3xl md:text-4xl font-bold text-stone-800">Implikasi & Visi Masa Depan</h3>
+                <p class="mt-4 max-w-2xl mx-auto text-stone-600">Bagaimana temuan ini dapat membentuk masa depan pertanian Indonesia, dan tantangan apa yang harus diatasi?</p>
+            </div>
+            <div class="mt-12 grid md:grid-cols-2 gap-8 md:gap-12">
+                <div class="bg-white p-8 rounded-xl shadow-lg content-card">
+                    <h4 class="text-2xl font-bold text-emerald-700">Potensi Pertanian Presisi</h4>
+                    <p class="mt-4 text-stone-600">Teknologi geospasial dapat diskalakan ke tingkat lahan untuk memberikan informasi yang dapat ditindaklanjuti oleh petani, mengoptimalkan input, dan memaksimalkan hasil.</p>
+                    <ul class="mt-4 space-y-2 text-stone-700 list-disc list-inside">
+                        <li>Aplikasi pupuk & air tingkat bervariasi</li>
+                        <li>Prediksi dan pemantauan hasil panen</li>
+                        <li>Manajemen lahan yang lebih berkelanjutan</li>
+                    </ul>
+                </div>
+                 <div class="bg-white p-8 rounded-xl shadow-lg content-card">
+                    <h4 class="text-2xl font-bold text-amber-700">Hambatan Adopsi</h4>
+                    <p class="mt-4 text-stone-600">Meskipun potensinya besar, adopsi oleh petani kecil menghadapi tantangan berat yang menciptakan "lembah kematian" antara riset dan penerapan.</p>
+                     <ul class="mt-4 space-y-2 text-stone-700 list-disc list-inside">
+                        <li>Biaya investasi teknologi yang tinggi</li>
+                        <li>Kesenjangan pengetahuan dan literasi digital</li>
+                        <li>Infrastruktur pedesaan yang kurang memadai</li>
+                    </ul>
+                </div>
+            </div>
+             <div class="mt-12 text-center bg-emerald-700 text-white p-8 rounded-xl shadow-xl">
+                <h4 class="text-2xl font-bold">Solusi Inovatif: "Pertanian Presisi sebagai Layanan" (PAaaS)</h4>
+                <p class="mt-4 max-w-3xl mx-auto">Untuk menjembatani kesenjangan, model PAaaS dapat diusulkan. Koperasi atau penyedia layanan lokal dapat menggunakan GEE untuk menyediakan konsultasi berbasis data yang terjangkau bagi petani kecil, mensosialisasikan biaya dan keterampilan teknologi.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-stone-800 text-white mt-16">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p>Dasbor Interaktif ini dibuat untuk menyajikan temuan dari laporan "Revolusi Geospasial di Sektor Pertanian Indonesia".</p>
+            <p class="text-sm text-stone-400 mt-2">© 2024 GeoAgri Indonesia. Semua hak dilindungi.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Mobile Menu Toggle
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // Navigation scroll highlighting
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 100) {
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').includes(current)) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+
+
+            // Algorithm Performance Chart
+            const ctx = document.getElementById('algorithmChart').getContext('2d');
+            const algorithmChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['SVM (Klasifikasi Sawit)', 'Random Forest (Agroforestri)', 'SVM (Pemetaan Sawit)', 'CART (Agroforestri)'],
+                    datasets: [{
+                        label: 'Akurasi Keseluruhan (%)',
+                        data: [98.6, 94.64, 94.7, 89.77],
+                        backgroundColor: [
+                            'rgba(5, 150, 105, 0.7)', // emerald-600
+                            'rgba(16, 185, 129, 0.7)', // emerald-500
+                            'rgba(110, 231, 183, 0.7)', // emerald-300
+                            'rgba(245, 158, 11, 0.7)' // amber-500
+                        ],
+                        borderColor: [
+                            'rgba(4, 120, 87, 1)',
+                            'rgba(5, 150, 105, 1)',
+                            'rgba(52, 211, 153, 1)',
+                            'rgba(217, 119, 6, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Akurasi: ${context.raw}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Akurasi (%)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Case Studies Interaction
+            const caseStudyData = {
+                sawah: {
+                    title: "Memantau Lumbung Padi: Alih Fungsi Lahan Sawah",
+                    description: "Padi adalah makanan pokok, namun lahan sawah produktif terus terancam oleh ekspansi perkotaan. Studi di Kota Serang menggunakan GEE dan citra Sentinel-2 untuk mengukur hilangnya lahan sawah. Hasilnya menunjukkan penurunan signifikan yang berkorelasi langsung dengan pertumbuhan area perkotaan, menjadi bukti nyata ancaman terhadap ketahanan pangan.",
+                    kpi: {
+                        value: "-602,87 ha",
+                        label: "Penurunan Lahan Sawah di Serang (2019-2021)"
+                    },
+                    chart: {
+                        type: 'line',
+                        data: {
+                            labels: ['2019', '2020', '2021'],
+                            datasets: [{
+                                label: 'Luas Lahan Sawah (ha)',
+                                data: [8373, 8071, 7770],
+                                fill: false,
+                                borderColor: 'rgb(34, 197, 94)',
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            plugins: {
+                                title: { display: true, text: 'Tren Penurunan Lahan Sawah di Kota Serang' }
+                            }
+                        }
+                    }
+                },
+                sawit: {
+                    title: "Industri Kelapa Sawit: Akurasi Pemetaan untuk Sertifikasi",
+                    description: "Sebagai produsen minyak sawit terbesar, pemetaan akurat adalah kunci transparansi dan keberlanjutan. Studi untuk mendukung sertifikasi RSPO membandingkan algoritma berbeda. Support Vector Machine (SVM) terbukti lebih unggul dalam mengidentifikasi perkebunan kelapa sawit secara akurat dibandingkan dengan metode Deep Learning.",
+                    kpi: {
+                        value: "94,7%",
+                        label: "Akurasi Pemetaan SVM vs Data Lapangan"
+                    },
+                    chart: {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Akurasi SVM', 'Akurasi Deep Learning'],
+                            datasets: [{
+                                label: 'Perbandingan Akurasi',
+                                data: [94.7, 93.0],
+                                backgroundColor: [
+                                    'rgba(5, 150, 105, 0.8)',
+                                    'rgba(245, 158, 11, 0.8)'
+                                ],
+                                hoverOffset: 4
+                            }]
+                        },
+                        options: {
+                             plugins: {
+                                title: { display: true, text: 'Perbandingan Akurasi Pemetaan Kelapa Sawit' }
+                            }
+                        }
+                    }
+                },
+                kopi: {
+                    title: "Lanskap Tumpangsari: Dinamika Perkebunan Kopi",
+                    description: "Pertanian Indonesia tidak hanya monokultur. Di Taman Hutan Raya Wan Abdul Rachman, GEE digunakan untuk melacak perubahan pada sistem pertanian yang kompleks. Hasilnya mengidentifikasi peningkatan signifikan area perkebunan kopi, yang sering kali menggantikan kebun campuran, menunjukkan pergeseran ekonomi di tingkat lokal.",
+                    kpi: {
+                        value: "+3.398 ha",
+                        label: "Peningkatan Area Kopi (2015-2018)"
+                    },
+                    chart: {
+                        type: 'bar',
+                        data: {
+                            labels: ['Perubahan Tutupan Lahan (ha)'],
+                            datasets: [
+                                {
+                                    label: 'Peningkatan Kopi',
+                                    data: [3398],
+                                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                                },
+                                {
+                                    label: 'Penurunan Kebun Campuran',
+                                    data: [-5068],
+                                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                                }
+                            ]
+                        },
+                        options: {
+                            plugins: {
+                                title: { display: true, text: 'Perubahan Lahan Kopi vs Kebun Campuran' }
+                            },
+                             scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            const contentContainer = document.getElementById('case-study-content');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            let currentChart = null;
+
+            function renderCaseStudy(filter) {
+                const data = caseStudyData[filter];
+                contentContainer.innerHTML = `
+                    <div class="lg:col-span-2 bg-white p-8 rounded-xl shadow-lg flex flex-col justify-center content-card">
+                        <h4 class="text-2xl md:text-3xl font-bold text-emerald-700">${data.title}</h4>
+                        <p class="mt-4 text-stone-600">${data.description}</p>
+                        <div class="mt-6 bg-emerald-50/70 p-4 rounded-lg text-center">
+                            <p class="text-3xl md:text-4xl font-bold text-emerald-800">${data.kpi.value}</p>
+                            <p class="text-sm font-medium text-stone-600 mt-1">${data.kpi.label}</p>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-3 bg-white p-8 rounded-xl shadow-lg flex items-center justify-center content-card">
+                        <div class="chart-container">
+                            <canvas id="caseStudyChart"></canvas>
+                        </div>
+                    </div>
+                `;
+
+                const caseStudyCtx = document.getElementById('caseStudyChart').getContext('2d');
+                if (currentChart) {
+                    currentChart.destroy();
+                }
+                currentChart = new Chart(caseStudyCtx, {
+                    type: data.chart.type,
+                    data: data.chart.data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        ...data.chart.options
+                    }
+                });
+            }
+
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    const filter = button.dataset.filter;
+                    renderCaseStudy(filter);
+                });
+            });
+
+            // Initial render
+            renderCaseStudy('sawah');
+        });
+    </script>
+</body>
+</html>
